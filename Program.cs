@@ -18,7 +18,7 @@ namespace FileSplitterUtility1
             var excelData = ReadExcelFileUsingClosedXml(filePath);
             var dataSet = SplitDataAndWriteToFile(excelData);
             string outFilePath = WriteDataSetToExcel(dataSet, filePath);
-            Console.WriteLine($"Output file generated at : {outFilePath}");
+            Console.WriteLine($"Output files generated at : {outFilePath}");
             Console.WriteLine("Press any key to close this window..");
             Console.ReadLine();
         }
@@ -62,12 +62,11 @@ namespace FileSplitterUtility1
                         distVals.Add(value);
                     }
                 }
-                int counter = 1;
 
                 foreach (var item in distVals)
                 {
                     var dt = data.Clone();
-                    dt.TableName = "Sheet" + counter++;
+                    dt.TableName = item.ToString();
                     foreach (DataRow row in data.Rows)
                     {
                         string value = row[0].ToString();
@@ -90,21 +89,22 @@ namespace FileSplitterUtility1
         static string WriteDataSetToExcel(DataSet ds, string filePath)
         {
             filePath = filePath.Trim('\"');
-            var outFilePath = Path.GetDirectoryName(filePath) + Path.DirectorySeparatorChar.ToString() + "outputFile.xlsx";
+            var outFileDir = Path.GetDirectoryName(filePath) + Path.DirectorySeparatorChar.ToString() + "outputFiles";
             try
             {
-                if (File.Exists(outFilePath))
+                if (Directory.Exists(outFileDir))
                 {
-                    File.Delete(outFilePath);
+                    Directory.Delete(outFileDir, false);
                 }
-                XLWorkbook wb = new XLWorkbook();
-                int counter = 1;
+
                 foreach (DataTable dataTable in ds.Tables)
                 {
-                    wb.AddWorksheet(dataTable, "Sheet" + counter++);
+                    XLWorkbook wb = new XLWorkbook();
+                    wb.AddWorksheet(dataTable, "sheet-"+dataTable.TableName);
+                    string outputFilePath = string.Concat(outFileDir, Path.DirectorySeparatorChar, "output-", dataTable.TableName, ".xlsx");
+                    wb.SaveAs(outputFilePath);
                 }
-                wb.SaveAs(outFilePath);
-                return outFilePath;
+                return outFileDir;
             }
             catch (Exception ex)
             {
