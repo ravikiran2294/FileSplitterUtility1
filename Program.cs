@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Net.Http.Headers;
 using System.Text;
 using ClosedXML.Excel;
+using DocumentFormat.OpenXml.Spreadsheet;
 
 namespace FileSplitterUtility1
 {
@@ -13,15 +14,16 @@ namespace FileSplitterUtility1
         {
             Console.WriteLine("Enter file path: ");
             string filePath = Console.ReadLine();
-            var excelData = ReadExcelData(filePath);
+            //var excelData = ReadExcelDataUsingOledb(filePath);
+            var excelData = ReadExcelFileUsingClosedXml(filePath);
             var dataSet = SplitDataAndWriteToFile(excelData);
             string outFilePath = WriteDataSetToExcel(dataSet, filePath);
-            Console.WriteLine($"Output file generated at :{outFilePath}");
+            Console.WriteLine($"Output file generated at : {outFilePath}");
             Console.WriteLine("Press any key to close this window..");
             Console.ReadLine();
         }
 
-        static DataTable ReadExcelData(string filePath)
+        static DataTable ReadExcelDataUsingOledb(string filePath)
         {
             DataTable dt = new DataTable();
             using (OleDbConnection con = new OleDbConnection("Provider=Microsoft.ACE.OLEDB.12.0;Data Source=" + filePath + ";Extended Properties='Excel 12.0; HDR=YES;IMEX=1;';"))
@@ -47,32 +49,42 @@ namespace FileSplitterUtility1
 
         static DataSet SplitDataAndWriteToFile(DataTable data)
         {
-            DataSet ds = new DataSet();
-            //var distinctFirstColVals = data.AsDataView().OfType<DataRow>().Select(x => x[0].ToString()).Distinct().ToList();
-            List<string> distVals = new List<string>();
-            foreach (DataRow row in data.Rows)
+            try
             {
-                string value = row[0].ToString();
-                if (!distVals.Contains(value))
-                {
-                    distVals.Add(value);
-                }
-            }
-            foreach (var item in distVals)
-            {
-                var dt = data.Clone();
+                DataSet ds = new DataSet();
+                //var distinctFirstColVals = data.AsDataView().OfType<DataRow>().Select(x => x[0].ToString()).Distinct().ToList();
+                List<string> distVals = new List<string>();
                 foreach (DataRow row in data.Rows)
                 {
                     string value = row[0].ToString();
-                    if (item == value)
+                    if (!distVals.Contains(value))
                     {
-                        //dt.ImportRow(row);
-                        dt.Rows.Add(row.ItemArray);
+                        distVals.Add(value);
                     }
                 }
-                ds.Tables.Add(dt);
+                int counter = 1;
+
+                foreach (var item in distVals)
+                {
+                    var dt = data.Clone();
+                    dt.TableName = "Sheet" + counter++;
+                    foreach (DataRow row in data.Rows)
+                    {
+                        string value = row[0].ToString();
+                        if (item == value)
+                        {
+                            //dt.ImportRow(row);
+                            dt.Rows.Add(row.ItemArray);
+                        }
+                    }
+                    ds.Tables.Add(dt);
+                }
+                return ds;
             }
-            return ds;
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message + Environment.NewLine + ex.StackTrace);
+            }
         }
 
         static string WriteDataSetToExcel(DataSet ds, string filePath)
@@ -99,5 +111,42 @@ namespace FileSplitterUtility1
                 throw new Exception(ex.Message + Environment.NewLine + ex.StackTrace);
             }
         }
+
+
+        static DataTable ReadExcelFileUsingClosedXml(string filePath)
+        {
+            try
+            {
+                DataTable dt = new DataTable();
+                using (XLWorkbook workBook = new XLWorkbook(filePath))
+                {
+                    IXLWorksheet workSheet1 = workBook.Worksheets.FirstOrDefault();
+                    //foreach (IXLWorksheet workSheet in workBook.Worksheets)
+                    //{ }
+                    dt = new DataTable(workSheet1.Name);
+
+                    // Read First Row of Excel Sheet to add Columns to DataTable
+                    workSheet1.FirstRowUsed().CellsUsed().ToList()
+                    .ForEach(x => { dt.Columns.Add(x.Value.ToString()); });
+
+                    foreach (IXLRow row in workSheet1.RowsUsed().Skip(1))
+                    {
+                        DataRow dr = dt.NewRow();
+                        for (int i = 0; i < dt.Columns.Count; i++)
+                        {
+                            dr[i] = row.Cell(i + 1).Value.ToString();
+                        }
+                        dt.Rows.Add(dr);
+                    }
+
+                }
+                return dt;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message + Environment.NewLine + ex.StackTrace);
+            }
+        }
+
     }
 }
