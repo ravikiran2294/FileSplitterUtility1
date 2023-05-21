@@ -14,10 +14,15 @@ namespace FileSplitterUtility1
         {
             Console.WriteLine("Enter file path: ");
             string filePath = Console.ReadLine();
-            //var excelData = ReadExcelDataUsingOledb(filePath);
-            var excelData = ReadExcelFileUsingClosedXml(filePath);
+			Console.WriteLine("Enter variable 1: ");
+			string value1 = Console.ReadLine();
+			Console.WriteLine("Enter date: ");
+			string date = Console.ReadLine();
+			//var excelData = ReadExcelDataUsingOledb(filePath);
+			var excelData = ReadExcelFileUsingClosedXml(filePath);
             var dataSet = SplitDataAndWriteToFile(excelData);
-            string outFilePath = WriteDataSetToExcel(dataSet, filePath);
+            
+            string outFilePath = WriteDataSetToExcel(dataSet, filePath, value1, date);
             Console.WriteLine($"Output files generated at : {outFilePath}");
             Console.WriteLine("Press any key to close this window..");
             Console.ReadLine();
@@ -86,7 +91,7 @@ namespace FileSplitterUtility1
             }
         }
 
-        static string WriteDataSetToExcel(DataSet ds, string filePath)
+        static string WriteDataSetToExcel(DataSet ds, string filePath, string value1, string date)
         {
             filePath = filePath.Trim('\"');
             var outFileDir = Path.GetDirectoryName(filePath) + Path.DirectorySeparatorChar.ToString() + "outputFiles";
@@ -101,7 +106,7 @@ namespace FileSplitterUtility1
                 {
                     XLWorkbook wb = new XLWorkbook();
                     wb.AddWorksheet(dataTable, "sheet-"+dataTable.TableName);
-                    string outputFilePath = string.Concat(outFileDir, Path.DirectorySeparatorChar, "output-", dataTable.TableName, ".xlsx");
+                    string outputFilePath = string.Concat(outFileDir, Path.DirectorySeparatorChar, value1, "_", dataTable.TableName, "_", date, ".xlsx");
                     wb.SaveAs(outputFilePath);
                 }
                 return outFileDir;
